@@ -4,6 +4,7 @@
 #include<c64.h>
 #include <joystick.h>
 #include<stdio.h>
+#include<conio.h>
 
 //macro to replicate BASIC V+n to get VIC addresses
 #define VIC_ADDR(n) *((volatile unsigned char*)0xD000 + (n))
@@ -30,6 +31,7 @@ const unsigned char sprite[] = {
 };
 
 int main() {
+	char key;
 	//for joystick error
 	char err;
 
@@ -44,52 +46,56 @@ int main() {
 		printf("JOYSTICK DRIVER ERROR!. %x\n", err);
 	}
 	else {
-	BG_COLOR = 0;
-	FG_COLOR = 0;
-	//clear screen
-	asm("jsr $e544");
-	//enable sprite 1
-	SPRITE_SETTINGS = 1;
-	SPRITE1_COLOR = COLOR_RED;
-	//set sprite 1 memory location
-	SPRITE1_LOCATION = 192;
-	SPRITE1_X = 148;
-	SPRITE1_Y = 100;
-	//copy sprite data
-	for (i = 0; i < 64; i++) {
-		SPRITE1_SETPIXEL(i) = sprite[i];
-	}
-	//game loop
-	for(;;) {
-		//wait to get to raster line 1. simulates VSync
-		while (VIC_ADDR(0x12) != 0x1) {}
-		//get joystick 2 status
-		joyStatus = joy_read(JOY_2);
-		
-		//horiz movement
-		if (JOY_LEFT(joyStatus)) SPRITE1_X -= 1;
-		else if (JOY_RIGHT(joyStatus)) SPRITE1_X += 1;
-
-		//color switch
-		if (JOY_UP(joyStatus)) curPalette = 2;
-		else if (JOY_DOWN(joyStatus)) curPalette = 1;
-		else curPalette = 0;
-
-		if (curPalette != prevPalette) switch(curPalette) {
-			case 0:
-				SPRITE1_COLOR = COLOR_RED;
-				break;
-			case 1:
-				SPRITE1_COLOR = COLOR_BLUE;
-				break;
-			case 2:
-				SPRITE1_COLOR = COLOR_GREEN;
-				break;
-
+		BG_COLOR = 0;
+		FG_COLOR = 0;
+		//clear screen
+		asm("jsr $e544");
+		//enable sprite 1
+		SPRITE_SETTINGS = 1;
+		SPRITE1_COLOR = COLOR_RED;
+		//set sprite 1 memory location
+		SPRITE1_LOCATION = 192;
+		SPRITE1_X = 148;
+		SPRITE1_Y = 100;
+		//copy sprite data
+		for (i = 0; i < 64; i++) {
+			SPRITE1_SETPIXEL(i) = sprite[i];
 		}
+		//game loop
+		for(;;) {
+			//wait to get to raster line 1. simulates VSync
+			while (VIC_ADDR(0x12) != 0x1) {}
 
-		prevPalette = curPalette;
-	}
+			//get joystick 2 status
+			joyStatus = joy_read(JOY_2);
+
+			key = 0x20;
+			if (kbhit()) key = cbm_k_getin();
+
+			//horiz movement
+			if (JOY_LEFT(joyStatus) || key == 0x9d) SPRITE1_X -= 1;
+			else if (JOY_RIGHT(joyStatus) || key == 0x1d) SPRITE1_X += 1;
+
+			//color switch
+			if (JOY_UP(joyStatus) || key == 0x91) curPalette = 2;
+			else if (JOY_DOWN(joyStatus) || key == 0x11) curPalette = 1;
+			else curPalette = 0;
+
+			if (curPalette != prevPalette) switch(curPalette) {
+				case 0:
+					SPRITE1_COLOR = COLOR_RED;
+					break;
+				case 1:
+					SPRITE1_COLOR = COLOR_BLUE;
+					break;
+				case 2:
+					SPRITE1_COLOR = COLOR_GREEN;
+					break;
+
+			}
+
+			prevPalette = curPalette;
+		}
 	}
 	return 0;
 }
